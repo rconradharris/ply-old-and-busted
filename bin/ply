@@ -12,36 +12,17 @@ $ ply save
 # if the branch already exists, it is overwritten!
 $ ply apply development
 """
-import contextlib
 import functools
 import glob
 import os
 import sys
 
 from ply import git
+from ply import utils
 
 
 class PathNotFound(Exception):
     pass
-
-
-@contextlib.contextmanager
-def temporary_chdir(path):
-    if not os.path.exists(path):
-        raise PathNotFound(path)
-
-    orig_path = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(orig_path)
-
-
-def fixup_path(path):
-    path = os.path.expanduser(path)
-    path = os.path.abspath(path)
-    return path
 
 
 def die(msg):
@@ -53,44 +34,17 @@ def usage():
     die("usage: ply <cmd>")
 
 
-def walk_up_path(path):
-    """Walk up a given path towards the root directory.
-
-    For example, path '/a/b/c' would yield:
-        /a/b/c
-        /a/b
-        /a
-        /
-    """
-    prev_path = None
-    while True:
-        yield path
-        prev_path = path
-        path, _ = os.path.split(path)
-        if prev_path == path:
-            raise StopIteration
-
-
 def find_ply_path(path):
     """Looks for .ply directory in the current directory, then any parent
     directories.
 
     If not found, raises a PathNotFound exception.
     """
-    for cur_path in walk_up_path(path):
+    for cur_path in utils.walk_up_path(path):
         ply_path = os.path.join(cur_path, '.ply')
         if os.path.exists(ply_path):
             return ply_path
     raise PathNotFound
-
-
-def write_file(filename, data):
-    with open(filename, 'w') as f:
-        f.write(data)
-
-
-def write_empty_file(filename):
-    return write_file(filename, '')
 
 
 def do_init():
@@ -103,11 +57,7 @@ def do_init():
     # FIXME: patches directory may not need to exist
     os.mkdir('patches')
     join = functools.partial(os.path.join, 'patches')
-    write_empty_file(join('.gitkeep'))
-
-    #with open(join('config'), 'w') as f:
-    #    f.write(CONFIG_TEMPLATE)
-
+    utils.write_empty_file(join('.gitkeep'))
     # TODO: commit "Initializing Patch Repo"
 
 
@@ -131,7 +81,7 @@ def link(patch_repo_path):
 
     Creates a .ply directory to hold ply state.
     """
-    patch_repo_path = fixup_path(patch_repo_path)
+    patch_repo_path = utils.fixup_path(patch_repo_path)
 
     if not os.path.exists(patch_repo_path):
         raise PathNotFound(patch_repo_path)
@@ -141,7 +91,7 @@ def link(patch_repo_path):
     os.mkdir('.ply')
     join = functools.partial(os.path.join, '.ply')
 
-    write_file(join('patch_repo'), patch_repo_path)
+    utils.write_file(join('patch_repo'), patch_repo_path)
 
 
 def get_patch_repo_path(path):
@@ -254,12 +204,6 @@ def get_all_patch_paths(patch_repo_path):
         yield path
 
 
-def slugify(text):
-    # TODO: use Django's slugify routine
-    text = text.replace(' ', '_')
-    return text
-
-
 def do_save():
     patch_repo_path = get_patch_repo_path(os.getcwd())
     save(patch_repo_path)
@@ -298,7 +242,7 @@ def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
 
     # TODO: generate a different commit message based on whether this is the
     # original patch commit, or resolving a conflict
-    with temporary_chdir(patches_path):
+    with utils.temporary_chdir(patches_path):
         for filename in filenames:
             git.add(filename)
         git.commit("Adding or updating %d" % start_number)
@@ -306,7 +250,7 @@ def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
 
 def make_next_patch_name(patch_repo_path, name):
     next_patch_num = get_max_patch_num(patch_repo_path) + 1
-    return "%04d-%s" % (next_patch_num, slugify(name))
+    return "%04d-%s" % (next_patch_num, utils.slugify(name))
 
 
 def get_max_patch_num(patch_repo_path):
