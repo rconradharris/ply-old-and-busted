@@ -17,4 +17,4 @@ setup(
         'Programming Language :: Python :: 2.6'
     ],
     install_requires=[],
-    scripts=['ply'])
+    scripts=['bin/ply'])
