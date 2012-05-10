@@ -1,0 +1,455 @@
+#!/usr/bin/env python
+"""
+# create a new patch
+$ ply new feature1
+    This creates a new branch called 001_feature1.
+    It then applies all previous commits and commits them
+
+# save a patch to the patch repo (after you've commited to the patch branch)
+$ ply save
+
+# Create a branch called development, and then apply each patch
+# if the branch already exists, it is overwritten!
+$ ply apply development
+"""
+import contextlib
+import functools
+import glob
+import os
+import subprocess
+import sys
+
+
+class PathNotFound(Exception):
+    pass
+
+
+class PlyException(Exception):
+    pass
+
+
+class PatchDidNotApplyCleanly(PlyException):
+    pass
+
+
+class MutuallyIncompatibleOptions(PlyException):
+    pass
+
+
+@contextlib.contextmanager
+def temporary_chdir(path):
+    if not os.path.exists(path):
+        raise PathNotFound(path)
+
+    orig_path = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(orig_path)
+
+
+def fixup_path(path):
+    path = os.path.expanduser(path)
+    path = os.path.abspath(path)
+    return path
+
+
+def die(msg):
+    print msg
+    sys.exit(1)
+
+
+def usage():
+    die("usage: ply <cmd>")
+
+
+def walk_up_path(path):
+    """Walk up a given path towards the root directory.
+
+    For example, path '/a/b/c' would yield:
+        /a/b/c
+        /a/b
+        /a
+        /
+    """
+    prev_path = None
+    while True:
+        yield path
+        prev_path = path
+        path, _ = os.path.split(path)
+        if prev_path == path:
+            raise StopIteration
+
+
+def find_ply_path(path):
+    """Looks for .ply directory in the current directory, then any parent
+    directories.
+
+    If not found, raises a PathNotFound exception.
+    """
+    for cur_path in walk_up_path(path):
+        ply_path = os.path.join(cur_path, '.ply')
+        if os.path.exists(ply_path):
+            return ply_path
+    raise PathNotFound
+
+
+def write_file(filename, data):
+    with open(filename, 'w') as f:
+        f.write(data)
+
+
+def write_empty_file(filename):
+    return write_file(filename, '')
+
+
+def do_init():
+    """Initialize patch repo directory structure.
+
+    config
+    patches/
+        .gitkeep
+    """
+    # FIXME: patches directory may not need to exist
+    os.mkdir('patches')
+    join = functools.partial(os.path.join, 'patches')
+    write_empty_file(join('.gitkeep'))
+
+    #with open(join('config'), 'w') as f:
+    #    f.write(CONFIG_TEMPLATE)
+
+    # TODO: commit "Initializing Patch Repo"
+
+
+def do_link(*args):
+    """Link a working repo to a patch repo.
+
+    Creates a .ply directory to hold ply state.
+    """
+    if not args:
+        die("ply link <patch-repo-path>")
+
+    patch_repo_path = args[0]
+    try:
+        link(patch_repo_path)
+    except PathNotFound:
+        die("'%s' does not exist" % patch_repo_path)
+
+
+def link(patch_repo_path):
+    """Link a working repo to a patch repo.
+
+    Creates a .ply directory to hold ply state.
+    """
+    patch_repo_path = fixup_path(patch_repo_path)
+
+    if not os.path.exists(patch_repo_path):
+        raise PathNotFound(patch_repo_path)
+
+    # TODO: verify that this is a git repo
+    # TODO: verify that .ply directory doesn't already exist
+    os.mkdir('.ply')
+    join = functools.partial(os.path.join, '.ply')
+
+    write_file(join('patch_repo'), patch_repo_path)
+
+
+def get_patch_repo_path(path):
+    """Return the patch repo path for the `path` within a working repo."""
+    ply_path = find_ply_path(path)
+    with open(os.path.join(ply_path, 'patch_repo'), 'r') as f:
+        patch_repo_path = f.read().strip()
+    return patch_repo_path
+
+
+def write_patch_head(ply_path, patch_num):
+    """Write out a counter which keeps track of the last successfully applied
+    patch.
+    """
+    with open(os.path.join(ply_path, 'PATCH_HEAD'), 'w') as f:
+        f.write("%d\n" % patch_num)
+
+
+def get_patch_head(ply_path):
+    with open(os.path.join(ply_path, 'PATCH_HEAD'), 'r') as f:
+        patch_num = int(f.read().strip())
+        return patch_num
+
+
+def do_status():
+    print "Patch Repo: %s" % get_patch_repo_path(os.getcwd())
+
+
+def do_patches():
+    patch_repo_path = get_patch_repo_path(os.getcwd())
+    for patch_path in get_all_patch_paths(patch_repo_path):
+        print patch_path
+
+
+def do_apply(branch_name):
+    cwd = os.getcwd()
+    ply_path = find_ply_path(cwd)
+    patch_repo_path = get_patch_repo_path(cwd)
+    apply_to_new_branch(ply_path, patch_repo_path, branch_name,
+                        create_and_reset=True)
+
+
+def apply_to_new_branch(ply_path, patch_repo_path, branch_name, create=False,
+        create_and_reset=False):
+    """Create a branch and apply patches to it."""
+    git_checkout(branch_name, create=create, create_and_reset=create_and_reset)
+    apply_all_patches(ply_path, patch_repo_path)
+
+
+def get_patch_num_from_patch_name(patch_name):
+    patch_prefix = patch_name.split('-', 1)[0]
+    patch_num = int(patch_prefix)
+    return patch_num
+
+
+def apply_all_patches(ply_path, patch_repo_path):
+    write_patch_head(ply_path, 0)
+    apply_patches(ply_path, patch_repo_path)
+
+
+def apply_patches(ply_path, patch_repo_path, start_patch_num=1):
+    for patch_path in get_all_patch_paths(patch_repo_path):
+        filename = os.path.basename(patch_path)
+        patch_num = get_patch_num_from_patch_name(filename)
+        if patch_num < start_patch_num:
+            continue
+
+        git_am(patch_path, three_way_merge=True)
+        write_patch_head(ply_path, patch_num)
+
+
+def do_resolve():
+    """
+    Resolve a corrupted patch.
+
+    Steps:
+
+        1. Fix the conflicting lines.
+        2. Add the files to the index.
+        3. Run ply resolve
+            a. This runs git am --resolve
+            b. Creates revised patch
+            c. Copies this revised patch over to patch repo.
+            d. Continues applying the rest of the patches
+    """
+    cwd = os.getcwd()
+    ply_path = find_ply_path(cwd)
+    patch_repo_path = get_patch_repo_path(cwd)
+    resolve(ply_path, patch_repo_path)
+
+
+def resolve(ply_path, patch_repo_path):
+    git_am(resolved=True)
+
+    last_patch_num = get_patch_head(ply_path)
+    this_patch_num = last_patch_num + 1
+
+    generate_and_commit_to_patch_repo(
+            patch_repo_path, start_number=this_patch_num)
+
+    next_patch_num = this_patch_num + 1
+    apply_patches(ply_path, patch_repo_path, start_patch_num=next_patch_num)
+
+
+def git_am(*patch_paths, **kwargs):
+    three_way_merge = kwargs.get('three_way_merge', False)
+    resolved = kwargs.get('resolved', False)
+
+    args = ['git', 'am']
+    args.extend(patch_paths)
+
+    if three_way_merge:
+        args.append('--3way')
+
+    if resolved:
+        args.append('--resolved')
+
+    try:
+        subprocess.check_call(args)
+    except subprocess.CalledProcessError:
+        raise PatchDidNotApplyCleanly
+
+
+def get_all_patch_paths(patch_repo_path):
+    patches_path = patch_repo_path = os.path.join(patch_repo_path, 'patches')
+    patches_glob = os.path.join(patches_path, "*.patch")
+
+    for path in glob.iglob(patches_glob):
+        yield path
+
+
+def slugify(text):
+    # TODO: use Django's slugify routine
+    text = text.replace(' ', '_')
+    return text
+
+
+def do_save():
+    patch_repo_path = get_patch_repo_path(os.getcwd())
+    save(patch_repo_path)
+
+
+def git_symbolic_ref(ref, quiet=False):
+    args = ['git', 'symbolic-ref', ref]
+    if quiet:
+        args.append('-q')
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    return stdout.strip()
+
+
+def get_current_branch_name():
+    ref_name = git_symbolic_ref('HEAD', quiet=True)
+    current_branch_name = ref_name.replace('refs/heads/', '')
+    return current_branch_name
+
+
+def git_diff(ref):
+    proc = subprocess.Popen(['git', 'diff', ref],
+                             stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    return stdout
+
+
+def git_format_patch(since, start_number=None):
+    """Returns a list of patch files"""
+    args = ['git', 'format-patch', '-%d' % since]
+    if start_number is not None:
+        args.extend(['--start-number', str(start_number)])
+
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    filenames = [line.strip() for line in stdout.split('\n') if line]
+    return filenames
+
+
+def save(patch_repo_path):
+    """Writes out last git commit to a patch file in the patch repo.
+
+    """
+    # TODO: add guard to ensure that new commit differs from last master
+    # commit and last applied patch. Forgetting to commit, will be a common
+    # mistake!
+
+    patch_name = get_current_branch_name()
+    patch_num = get_patch_num_from_patch_name(patch_name)
+
+    # TODO: write these patch files to the ply directory
+    # NOTE: for now we're assuming we're dealing with 1 patch (could it be
+    # more?)
+    generate_and_commit_to_patch_repo(patch_repo_path, start_number=patch_num)
+
+    #filename = "%s.diff" % patch_name
+    #patches_path = os.path.join(patch_repo_path, 'patches')
+    #patch_path = os.path.join(patches_path, filename)
+
+    ## Diff to previous commit, since currently, patches are assumed to be a
+    ## single commit
+    #diff_data = git_diff('HEAD^')
+
+    #write_file(patch_path, diff_data)
+    ## TODO: write out a commit msg file too
+    ## TODO: should we destroy the topic branch too?
+    ## TODO: should this patch be commited to the patch repo?
+
+
+def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
+    # NOTE: assume we're dealing with one patch for now
+    filenames = git_format_patch(1, start_number=start_number)
+
+    patches_path = os.path.join(patch_repo_path, 'patches')
+    for filename in filenames:
+        os.rename(filename, os.path.join(patches_path, filename))
+
+    # TODO: generate a different commit message based on whether this is the
+    # original patch commit, or resolving a conflict
+    with temporary_chdir(patches_path):
+        for filename in filenames:
+            git_add(filename)
+        git_commit("Adding or updating %d" % start_number)
+
+
+def make_next_patch_name(patch_repo_path, name):
+    next_patch_num = get_max_patch_num(patch_repo_path) + 1
+    return "%04d-%s" % (next_patch_num, slugify(name))
+
+
+def get_max_patch_num(patch_repo_path):
+    patch_paths = list(get_all_patch_paths(patch_repo_path))
+    if not patch_paths:
+        return 0
+
+    last_patch_path = patch_paths[-1]
+    filename = os.path.basename(last_patch_path)
+    patch_num = get_patch_num_from_patch_name(filename)
+    return patch_num
+
+
+def do_create(name):
+    # TODO: perhaps name should be optional, since it won't be used; just a
+    # convenience so you end up with a human-friendly branch name
+    cwd = os.getcwd()
+    ply_path = find_ply_path(cwd)
+    patch_repo_path = get_patch_repo_path(cwd)
+    create_new_patch_branch(ply_path, patch_repo_path, name)
+
+
+def create_new_patch_branch(ply_path, patch_repo_path, name):
+    """
+    1. Create a topic branch with the patch name
+    2. Apply all of the patches
+    3. Commit the patches into git
+    """
+    patch_name = make_next_patch_name(patch_repo_path, name)
+    apply_to_new_branch(ply_path, patch_repo_path, patch_name, create=True)
+
+
+def git_checkout(branch_name, create=False, create_and_reset=False):
+    args = ['git', 'checkout']
+
+    if create and create_and_reset:
+        raise MutuallyIncompatibleOptions("create and create_and_reset")
+
+    if create:
+        args.append('-b')
+
+    if create_and_reset:
+        args.append('-B')
+
+
+    args.append(branch_name)
+
+    subprocess.check_call(args)
+
+
+def git_add(filename):
+    subprocess.check_call(['git', 'add', filename])
+
+
+def git_commit(msg, all=False):
+    args = ['git', 'commit', '-m', '%s' % msg]
+    if all:
+        args.append('-a')
+    subprocess.check_call(args)
+
+
+def main():
+    if len(sys.argv) < 2:
+        usage()
+
+    cmd = sys.argv[1]
+    func = globals().get('do_%s' % cmd)
+    if func:
+        func(*sys.argv[2:])
+    else:
+        die("command '%s' not found" % cmd)
+
+
+if __name__ == "__main__":
+    main()
