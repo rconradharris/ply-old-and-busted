@@ -6,16 +6,16 @@ from ply import git
 from ply import utils
 
 
-def apply_to_new_branch(ply_path, patch_repo_path, branch_name, create=False,
+def apply_to_new_branch(patch_repo_path, branch_name, create=False,
         create_and_reset=False):
     """Create a branch and apply patches to it."""
     git.checkout(branch_name, create=create, create_and_reset=create_and_reset)
 
-    write_patch_head(ply_path, 0)
-    apply_patches(ply_path, patch_repo_path)
+    write_patch_head(0)
+    apply_patches(patch_repo_path)
 
 
-def apply_patches(ply_path, patch_repo_path, start_patch_num=1):
+def apply_patches(patch_repo_path, start_patch_num=1):
     for patch_path in get_all_patch_paths(patch_repo_path):
         filename = os.path.basename(patch_path)
         patch_num = get_patch_num_from_patch_name(filename)
@@ -23,33 +23,22 @@ def apply_patches(ply_path, patch_repo_path, start_patch_num=1):
             continue
 
         git.am(patch_path, three_way_merge=True)
-        write_patch_head(ply_path, patch_num)
+        write_patch_head(patch_num)
 
 
-def create_new_patch_branch(ply_path, patch_repo_path, name):
+def create_new_patch_branch(patch_repo_path, name):
     """
     1. Create a topic branch with the patch name
     2. Apply all of the patches
     3. Commit the patches into git
     """
     patch_name = make_next_patch_name(patch_repo_path, name)
-    apply_to_new_branch(ply_path, patch_repo_path, patch_name, create=True)
-
-
-def find_ply_path(path):
-    """Looks for .ply directory in the current directory, then any parent
-    directories.
-
-    If not found, raises a PathNotFound exception.
-    """
-    return utils.find_file_recursively_to_root('.ply', path)
+    apply_to_new_branch(patch_repo_path, patch_name, create=True)
 
 
 def get_patch_repo_path(path):
     """Return location of PR"""
-    pr_ptr_path = utils.find_file_recursively_to_root('.PATCH_REPO', path)
-    with open(pr_ptr_path, 'r') as f:
-        patch_repo_path = f.read().strip()
+    patch_repo_path = utils.read_nearest_file('.PATCH_REPO', path).strip()
     return patch_repo_path
 
 
@@ -73,10 +62,8 @@ def link(patch_repo_path):
     utils.write_file('.PATCH_REPO', patch_repo_path)
 
 
-def get_patch_head(ply_path):
-    with open(os.path.join(ply_path, 'PATCH_HEAD'), 'r') as f:
-        patch_num = int(f.read().strip())
-        return patch_num
+def get_patch_head(path):
+    return int(read_nearest_file('.PATCH_HEAD', path).strip())
 
 
 def get_all_patch_paths(patch_repo_path):
@@ -107,18 +94,17 @@ def make_next_patch_name(patch_repo_path, name):
     return "%04d-%s" % (next_patch_num, utils.slugify(name))
 
 
-def resolve(ply_path, patch_repo_path):
+def resolve(path, patch_repo_path):
     git.am(resolved=True)
 
-    last_patch_num = get_patch_head(ply_path)
+    last_patch_num = get_patch_head(path)
     this_patch_num = last_patch_num + 1
 
     generate_and_commit_to_patch_repo(
             patch_repo_path, start_number=this_patch_num)
 
     next_patch_num = this_patch_num + 1
-    apply_patches(
-            ply_path, patch_repo_path, start_patch_num=next_patch_num)
+    apply_patches(patch_repo_path, start_patch_num=next_patch_num)
 
 
 def save(patch_repo_path):
@@ -153,9 +139,9 @@ def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
 
 
 
-def write_patch_head(ply_path, patch_num):
+def write_patch_head(patch_num):
     """Write out a counter which keeps track of the last successfully applied
     patch.
     """
-    with open(os.path.join(ply_path, 'PATCH_HEAD'), 'w') as f:
+    with open('.PATCH_HEAD', 'w') as f:
         f.write("%d\n" % patch_num)

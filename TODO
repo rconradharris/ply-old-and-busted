@@ -1,2 +1,2 @@
-- Move .ply/patch_head into PB as PATCH_HEAD
+- Write commit .PATCH_HEAD in PB
 - Remove ply-create (ply-patch should do the job)

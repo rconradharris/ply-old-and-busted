@@ -29,6 +29,12 @@ def temporary_chdir(path):
         os.chdir(orig_path)
 
 
+def read_nearest_file(filename, path):
+    file_path = find_file_recursively_to_root(filename, path)
+    with open(file_path, 'r') as f:
+        return f.read()
+
+
 def find_file_recursively_to_root(filename, path):
     for cur_path in walk_up_path(path):
         file_path = os.path.join(cur_path, filename)

@@ -18,9 +18,8 @@ def usage():
 
 def do_apply(branch_name):
     cwd = os.getcwd()
-    ply_path = ply.find_ply_path(cwd)
     patch_repo_path = ply.get_patch_repo_path(cwd)
-    ply.apply_to_new_branch(ply_path, patch_repo_path, branch_name,
+    ply.apply_to_new_branch(patch_repo_path, branch_name,
                             create_and_reset=True)
 
 
@@ -28,9 +27,8 @@ def do_create(name):
     # TODO: perhaps name should be optional, since it won't be used; just a
     # convenience so you end up with a human-friendly branch name
     cwd = os.getcwd()
-    ply_path = ply.find_ply_path(cwd)
     patch_repo_path = ply.get_patch_repo_path(cwd)
-    ply.create_new_patch_branch(ply_path, patch_repo_path, name)
+    ply.create_new_patch_branch(patch_repo_path, name)
 
 
 def do_link(*args):
@@ -63,9 +61,8 @@ def do_resolve():
             d. Continues applying the rest of the patches
     """
     cwd = os.getcwd()
-    ply_path = ply.find_ply_path(cwd)
     patch_repo_path = ply.get_patch_repo_path(cwd)
-    ply.resolve(ply_path, patch_repo_path)
+    ply.resolve(cwd, patch_repo_path)
 
 
 def do_save():
