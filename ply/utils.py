@@ -1,6 +1,8 @@
 import contextlib
 import os
 
+from ply import exceptions
+
 
 def fixup_path(path):
     path = os.path.expanduser(path)
@@ -17,7 +19,7 @@ def slugify(text):
 @contextlib.contextmanager
 def temporary_chdir(path):
     if not os.path.exists(path):
-        raise PathNotFound(path)
+        raise exceptions.PathNotFound(path)
 
     orig_path = os.getcwd()
     os.chdir(path)

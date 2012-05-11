@@ -1,12 +1,9 @@
 import glob
 import os
 
+from ply import exceptions
 from ply import git
 from ply import utils
-
-
-class PathNotFound(Exception):
-    pass
 
 
 def apply_to_new_branch(ply_path, patch_repo_path, branch_name, create=False,
@@ -49,7 +46,7 @@ def find_ply_path(path):
         ply_path = os.path.join(cur_path, '.ply')
         if os.path.exists(ply_path):
             return ply_path
-    raise PathNotFound
+    raise exceptions.PathNotFound
 
 
 def get_patch_repo_path(path):
@@ -74,7 +71,7 @@ def link(patch_repo_path):
     patch_repo_path = utils.fixup_path(patch_repo_path)
 
     if not os.path.exists(patch_repo_path):
-        raise PathNotFound(patch_repo_path)
+        raise exceptions.PathNotFound(patch_repo_path)
 
     # TODO: verify that this is a git repo
     # TODO: verify that .ply directory doesn't already exist

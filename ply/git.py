@@ -1,14 +1,14 @@
 import subprocess
 
-class PlyException(Exception):
+class GitException(Exception):
     pass
 
 
-class PatchDidNotApplyCleanly(PlyException):
+class PatchDidNotApplyCleanly(GitException):
     pass
 
 
-class MutuallyIncompatibleOptions(PlyException):
+class MutuallyIncompatibleOptions(GitException):
     pass
 
 
