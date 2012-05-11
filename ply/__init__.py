@@ -87,9 +87,7 @@ def get_patch_head(ply_path):
 
 
 def get_all_patch_paths(patch_repo_path):
-    patches_path = patch_repo_path = os.path.join(patch_repo_path, 'patches')
-    patches_glob = os.path.join(patches_path, "*.patch")
-
+    patches_glob = os.path.join(patch_repo_path, "*.patch")
     for path in glob.iglob(patches_glob):
         yield path
 
@@ -150,14 +148,12 @@ def save(patch_repo_path):
 def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
     # NOTE: assume we're dealing with one patch for now
     filenames = git.format_patch(1, start_number=start_number)
-
-    patches_path = os.path.join(patch_repo_path, 'patches')
     for filename in filenames:
-        os.rename(filename, os.path.join(patches_path, filename))
+        os.rename(filename, os.path.join(patch_repo_path, filename))
 
     # TODO: generate a different commit message based on whether this is the
     # original patch commit, or resolving a conflict
-    with utils.temporary_chdir(patches_path):
+    with utils.temporary_chdir(patch_repo_path):
         for filename in filenames:
             git.add(filename)
         git.commit("Adding or updating %d" % start_number)

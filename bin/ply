@@ -33,19 +33,6 @@ def do_create(name):
     ply.create_new_patch_branch(ply_path, patch_repo_path, name)
 
 
-def do_init():
-    """Initialize patch repo directory structure.
-
-    config
-    patches/
-        .gitkeep
-    """
-    # FIXME: patches directory may not need to exist
-    os.mkdir('patches')
-    utils.write_empty_file(os.path.join('patches', '.gitkeep'))
-    # TODO: commit "Initializing Patch Repo"
-
-
 def do_link(*args):
     """Link a working repo to a patch repo.
 
