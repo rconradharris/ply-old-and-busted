@@ -1,4 +1,0 @@
-ply
-===
-
-Patch Repository Manager

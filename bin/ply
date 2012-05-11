@@ -1,17 +1,4 @@
 #!/usr/bin/env python
-"""
-# create a new patch
-$ ply new feature1
-    This creates a new branch called 001_feature1.
-    It then applies all previous commits and commits them
-
-# save a patch to the patch repo (after you've commited to the patch branch)
-$ ply save
-
-# Create a branch called development, and then apply each patch
-# if the branch already exists, it is overwritten!
-$ ply apply development
-"""
 import os
 import sys
 
