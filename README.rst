@@ -8,9 +8,9 @@ Description
 ===========
 
 `ply` is a utility to manage a series of patches against an upstream project.
-These patches are stored as file in a separate git repositiory so that they
-themselves can be versioned.  The series of patches can be applied in order to
-create a patch-branch which can be used for packaging and/or deployment.
+These patches are stored as files in a separate git repositiory so that they
+can themselves be versioned. The patch series is applied in order to create a
+patch-branch which can then be used for packaging and/or deployment.
 
 
 Concepts
@@ -48,10 +48,8 @@ Commands
     # Link a WR to a PR
     $ ply link <path-to-patch-repo>
 
-
     # Create a new PB
     $ ply patch <branch-name>
-
 
     # Save last commit as a patch in the PR
     $ ply save
