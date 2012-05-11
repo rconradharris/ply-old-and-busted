@@ -6,11 +6,8 @@ from ply import git
 from ply import utils
 
 
-def apply_to_new_branch(patch_repo_path, branch_name, create=False,
-        create_and_reset=False):
-    """Create a branch and apply patches to it."""
-    git.checkout(branch_name, create=create, create_and_reset=create_and_reset)
-
+def create_patch_branch(patch_repo_path, branch_name):
+    git.checkout(branch_name, create_and_reset=True)
     write_patch_head(0)
     apply_patches(patch_repo_path)
 
@@ -53,7 +50,7 @@ def link(patch_repo_path):
 
 
 def get_patch_head(path):
-    return int(read_nearest_file('.PATCH_HEAD', path).strip())
+    return int(utils.read_nearest_file('.PATCH_HEAD', path).strip())
 
 
 def get_all_patch_paths(patch_repo_path):
