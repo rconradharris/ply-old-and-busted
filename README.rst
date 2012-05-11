@@ -7,35 +7,27 @@ Patch Repository Manager
 Description
 ===========
 
-`ply` is a utility to manage patches held against another project. These
-patches are stored in a separate `git` repository and are applied to generate
-a `patch branch` that you can package or deploy from.
-
-`ply` is similar to other tools like `quilt` and `sGit` but differs in some
-key ways:
-
-1. Simple, maintains a linear, sequence of patches to applied to `master`
-2. Tightly integrated with `git`
-3. Doesn't require you to checkpoint files before you edit them (like `quilt`
-   does).
+`ply` is a utility to manage a series of patches against an upstream project.
+These patches are stored as file in a separate git repositiory so that they
+themselves can be versioned.  The series of patches can be applied in order to
+create a patch-branch which can be used for packaging and/or deployment.
 
 
 Concepts
 ========
 
-A 'working repo' (WR) is linked to a 'patch repo' (PR).
+The upstream project is housed in the ``working repo`` (WR).
 
-The PR stores formatted patches which can be applied to the WR to create a
-'patch branch' (PB).
+The series of patches are stored in the ``patch repo`` (PR).
 
-New patches are created by adding a commit to a PB and then saving into the
-PR.
+The patches in the PR can be applied to the WR to generate a ``patch branch``
+(PB).
 
-If the WR changes, conflicts will be created in a PB. These are resolved one
-at a time by editing the files and then running `ply resolve`. This process
-updates the patches in the PR so that these lines won't conflict in the
-future. (One way to think of this is as a cross-repository rebase, we're
-rebasing the changes in the PR onto the WR to generate a PB.)
+Patches are added to the PR by committing a new patch to the PB and then
+running `ply save`.
+
+If conflicts are encountered while generating the PB, the affected patches in
+the PR are updated so that future conflicts won't occur.
 
 
 Design
@@ -43,6 +35,9 @@ Design
 
 In the WR's working directory a file called `PATCH_REPO` is stored which
 points to the local PR.
+
+Each PB has a file called `PATCH_HEAD` which stores the index of the last
+successfully applied patch.
 
 
 Commands
@@ -60,7 +55,6 @@ Commands
 
     # Save last commit as a patch in the PR
     $ ply save
-
 
     # Mark conflicts in a PB resolved
     $ ply resolve

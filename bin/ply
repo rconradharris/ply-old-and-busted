@@ -15,23 +15,8 @@ def usage():
     die("usage: ply <cmd>")
 
 
-def do_patch(branch_name):
-    cwd = os.getcwd()
-    patch_repo_path = ply.get_patch_repo_path(cwd)
-    try:
-        ply.create_patch_branch(patch_repo_path, branch_name)
-    except git.PatchDidNotApplyCleanly:
-        die("Patch did not apply cleanly:\n"
-            "\t1. Fix conflicts\n"
-            "\t2. git add any modified files\n"
-            "\t3. ply resolve\n")
-
-
 def do_link(*args):
-    """Link a working repo to a patch repo.
-
-    Creates a .ply directory to hold ply state.
-    """
+    """Link a working repo to a patch repo."""
     if not args:
         die("ply link <patch-repo-path>")
 
@@ -42,9 +27,21 @@ def do_link(*args):
         die("'%s' does not exist" % patch_repo_path)
 
 
+def do_patch(branch_name):
+    """Create a named patch branch."""
+    patch_repo_path = ply.get_patch_repo_path(os.getcwd())
+    try:
+        ply.create_patch_branch(patch_repo_path, branch_name)
+    except git.PatchDidNotApplyCleanly:
+        die("Patch did not apply cleanly:\n"
+            "\t1. Fix conflicts\n"
+            "\t2. git add any modified files\n"
+            "\t3. ply resolve\n")
+
+
 def do_resolve():
-    """
-    Resolve a corrupted patch.
+    """Mark conflicts for a patch as resolved and continue applying the rest
+    of the patches.
 
     Steps:
 
@@ -56,12 +53,12 @@ def do_resolve():
             c. Copies this revised patch over to patch repo.
             d. Continues applying the rest of the patches
     """
-    cwd = os.getcwd()
-    patch_repo_path = ply.get_patch_repo_path(cwd)
+    patch_repo_path = ply.get_patch_repo_path(os.getcwd())
     ply.resolve(cwd, patch_repo_path)
 
 
 def do_save():
+    """Save a new patch into the patch repo."""
     patch_repo_path = ply.get_patch_repo_path(os.getcwd())
     ply.save(patch_repo_path)
 
