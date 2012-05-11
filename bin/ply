@@ -4,7 +4,6 @@ import sys
 
 import ply
 from ply import git
-from ply import utils
 
 
 def die(msg):
@@ -19,7 +18,13 @@ def usage():
 def do_patch(branch_name):
     cwd = os.getcwd()
     patch_repo_path = ply.get_patch_repo_path(cwd)
-    ply.create_patch_branch(patch_repo_path, branch_name)
+    try:
+        ply.create_patch_branch(patch_repo_path, branch_name)
+    except git.PatchDidNotApplyCleanly:
+        die("Patch did not apply cleanly:\n"
+            "\t1. Fix conflicts\n"
+            "\t2. git add any modified files\n"
+            "\t3. ply resolve\n")
 
 
 def do_link(*args):
