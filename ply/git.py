@@ -53,10 +53,22 @@ def checkout(branch_name, create=False, create_and_reset=False):
     subprocess.check_call(args)
 
 
-def commit(msg, all=False):
-    args = ['git', 'commit', '-m', '%s' % msg]
+def commit(msg, all=False, amend=False, use_commit_object=None):
+    args = ['git', 'commit']
+
+    if msg is not None:
+        args.extend(['-m', '%s' % msg])
+
     if all:
         args.append('-a')
+
+    if amend:
+        args.append('--amend')
+
+
+    if use_commit_object:
+        args.extend(['-C', use_commit_object])
+
     subprocess.check_call(args)
 
 

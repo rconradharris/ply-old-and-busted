@@ -1,2 +1,1 @@
-- Write commit .PATCH_HEAD in PB
 - Remove ply-create (ply-patch should do the job)

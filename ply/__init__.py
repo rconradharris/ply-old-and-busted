@@ -23,7 +23,8 @@ def apply_patches(patch_repo_path, start_patch_num=1):
             continue
 
         git.am(patch_path, three_way_merge=True)
-        write_patch_head(patch_num)
+        write_and_commit_patch_head(patch_num)
+
 
 
 def create_new_patch_branch(patch_repo_path, name):
@@ -137,6 +138,14 @@ def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
             git.add(filename)
         git.commit("Adding or updating %d" % start_number)
 
+
+def write_and_commit_patch_head(patch_num):
+    write_patch_head(patch_num)
+
+    git.add('.PATCH_HEAD')
+
+    # Don't create a separate commit just to bump the PATCH_HEAD
+    git.commit(None, amend=True, use_commit_object="HEAD")
 
 
 def write_patch_head(patch_num):
