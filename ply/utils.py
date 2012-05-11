@@ -29,6 +29,14 @@ def temporary_chdir(path):
         os.chdir(orig_path)
 
 
+def find_file_recursively_to_root(filename, path):
+    for cur_path in walk_up_path(path):
+        file_path = os.path.join(cur_path, filename)
+        if os.path.exists(file_path):
+            return file_path
+    raise exceptions.PathNotFound
+
+
 def walk_up_path(path):
     """Walk up a given path towards the root directory.
 

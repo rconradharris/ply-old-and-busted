@@ -42,17 +42,13 @@ def find_ply_path(path):
 
     If not found, raises a PathNotFound exception.
     """
-    for cur_path in utils.walk_up_path(path):
-        ply_path = os.path.join(cur_path, '.ply')
-        if os.path.exists(ply_path):
-            return ply_path
-    raise exceptions.PathNotFound
+    return utils.find_file_recursively_to_root('.ply', path)
 
 
 def get_patch_repo_path(path):
-    """Return the patch repo path for the `path` within a working repo."""
-    ply_path = find_ply_path(path)
-    with open(os.path.join(ply_path, 'patch_repo'), 'r') as f:
+    """Return location of PR"""
+    pr_ptr_path = utils.find_file_recursively_to_root('.PATCH_REPO', path)
+    with open(pr_ptr_path, 'r') as f:
         patch_repo_path = f.read().strip()
     return patch_repo_path
 
@@ -74,10 +70,7 @@ def link(patch_repo_path):
         raise exceptions.PathNotFound(patch_repo_path)
 
     # TODO: verify that this is a git repo
-    # TODO: verify that .ply directory doesn't already exist
-    os.mkdir('.ply')
-    ply_path = os.path.join('.ply', 'patch_repo')
-    utils.write_file(ply_path, patch_repo_path)
+    utils.write_file('.PATCH_REPO', patch_repo_path)
 
 
 def get_patch_head(ply_path):

@@ -1,3 +1,2 @@
-- Use PATCH_REPO file instead of .ply directory
 - Move .ply/patch_head into PB as PATCH_HEAD
 - Remove ply-create (ply-patch should do the job)

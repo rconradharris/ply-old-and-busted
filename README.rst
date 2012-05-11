@@ -23,11 +23,17 @@ points to the local PR.
 Commands
 ========
 
+# Link a WR to a PR
+$ ply link <path-to-patch-repo>
+
+
 # Create a new PB
 $ ply patch <branch-name>
 
+
 # Save last commit as a patch in the PR
 $ ply save
+
 
 # Mark conflicts in a PB resolved
 $ ply resolve
