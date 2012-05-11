@@ -82,12 +82,3 @@ def format_patch(since, start_number=None):
     stdout, stderr = proc.communicate()
     filenames = [line.strip() for line in stdout.split('\n') if line]
     return filenames
-
-
-def symbolic_ref(ref, quiet=False):
-    args = ['git', 'symbolic-ref', ref]
-    if quiet:
-        args.append('-q')
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    return stdout.strip()

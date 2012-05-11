@@ -10,12 +10,6 @@ def fixup_path(path):
     return path
 
 
-def slugify(text):
-    # TODO: use Django's slugify routine
-    text = text.replace(' ', '-')
-    return text
-
-
 @contextlib.contextmanager
 def temporary_chdir(path):
     if not os.path.exists(path):

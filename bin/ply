@@ -23,14 +23,6 @@ def do_apply(branch_name):
                             create_and_reset=True)
 
 
-def do_create(name):
-    # TODO: perhaps name should be optional, since it won't be used; just a
-    # convenience so you end up with a human-friendly branch name
-    cwd = os.getcwd()
-    patch_repo_path = ply.get_patch_repo_path(cwd)
-    ply.create_new_patch_branch(patch_repo_path, name)
-
-
 def do_link(*args):
     """Link a working repo to a patch repo.
 

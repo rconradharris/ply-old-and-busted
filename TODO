@@ -1,1 +1,1 @@
-- Remove ply-create (ply-patch should do the job)
+- Rename apply to patch

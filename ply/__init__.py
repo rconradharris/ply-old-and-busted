@@ -26,17 +26,6 @@ def apply_patches(patch_repo_path, start_patch_num=1):
         write_and_commit_patch_head(patch_num)
 
 
-
-def create_new_patch_branch(patch_repo_path, name):
-    """
-    1. Create a topic branch with the patch name
-    2. Apply all of the patches
-    3. Commit the patches into git
-    """
-    patch_name = make_next_patch_name(patch_repo_path, name)
-    apply_to_new_branch(patch_repo_path, patch_name, create=True)
-
-
 def get_patch_repo_path(path):
     """Return location of PR"""
     patch_repo_path = utils.read_nearest_file('.PATCH_REPO', path).strip()
@@ -73,12 +62,6 @@ def get_all_patch_paths(patch_repo_path):
         yield path
 
 
-def get_current_branch_name():
-    ref_name = git.symbolic_ref('HEAD', quiet=True)
-    current_branch_name = ref_name.replace('refs/heads/', '')
-    return current_branch_name
-
-
 def get_max_patch_num(patch_repo_path):
     patch_paths = list(get_all_patch_paths(patch_repo_path))
     if not patch_paths:
@@ -88,11 +71,6 @@ def get_max_patch_num(patch_repo_path):
     filename = os.path.basename(last_patch_path)
     patch_num = get_patch_num_from_patch_name(filename)
     return patch_num
-
-
-def make_next_patch_name(patch_repo_path, name):
-    next_patch_num = get_max_patch_num(patch_repo_path) + 1
-    return "%04d-%s" % (next_patch_num, utils.slugify(name))
 
 
 def resolve(path, patch_repo_path):
@@ -115,14 +93,13 @@ def save(patch_repo_path):
     # TODO: add guard to ensure that new commit differs from last master
     # commit and last applied patch. Forgetting to commit, will be a common
     # mistake!
-
-    patch_name = get_current_branch_name()
-    patch_num = get_patch_num_from_patch_name(patch_name)
+    next_patch_num = get_max_patch_num(patch_repo_path) + 1
 
     # TODO: write these patch files to the ply directory
     # NOTE: for now we're assuming we're dealing with 1 patch (could it be
     # more?)
-    generate_and_commit_to_patch_repo(patch_repo_path, start_number=patch_num)
+    generate_and_commit_to_patch_repo(
+            patch_repo_path, start_number=next_patch_num)
 
 
 def generate_and_commit_to_patch_repo(patch_repo_path, start_number=None):
